@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDF Buchanzeige</title>
-    <script src="https://mozilla.github.io/pdf.js/build/pdf.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -27,7 +27,6 @@
             align-items: center;
             width: 100vw;
             height: 80vh;
-            overflow: hidden;
             background: black;
         }
         canvas {
@@ -73,7 +72,7 @@
     </div>
     <div class="controls">
         <button id="prev">&#9664;</button>
-        <span id="page-info"></span>
+        <span id="page-info">Seite 0 von 0</span>
         <button id="next">&#9654;</button>
     </div>
     <input type="file" id="file-input" accept="application/pdf">
@@ -81,7 +80,6 @@
     <script>
         let pdfDoc = null;
         let pageNum = 1;
-        let pageRendering = false;
         let canvas = document.getElementById("pdf-canvas");
         let ctx = canvas.getContext("2d");
 
@@ -89,7 +87,7 @@
             pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
                 pdfDoc = pdf;
                 pageNum = 1;
-                document.getElementById("page-info").textContent = `Seite ${pageNum} von ${pdf.numPages}`;
+                updatePageInfo();
                 renderPage(pageNum);
             }).catch(function(error) {
                 console.error("Fehler beim Laden des PDFs:", error);
@@ -98,32 +96,37 @@
         }
 
         function renderPage(num) {
-            pageRendering = true;
+            if (!pdfDoc) return;
             pdfDoc.getPage(num).then(function(page) {
                 let viewport = page.getViewport({ scale: window.innerWidth / page.getViewport({ scale: 1 }).width * 0.9 });
-                canvas.height = viewport.height;
                 canvas.width = viewport.width;
+                canvas.height = viewport.height;
                 let renderContext = {
                     canvasContext: ctx,
                     viewport: viewport
                 };
-                page.render(renderContext).promise.then(function() {
-                    pageRendering = false;
-                    document.getElementById("page-info").textContent = `Seite ${num} von ${pdfDoc.numPages}`;
-                });
+                page.render(renderContext).promise.then(updatePageInfo);
             });
         }
 
+        function updatePageInfo() {
+            if (pdfDoc) {
+                document.getElementById("page-info").textContent = `Seite ${pageNum} von ${pdfDoc.numPages}`;
+            }
+        }
+
         document.getElementById("prev").addEventListener("click", function() {
-            if (pageNum <= 1) return;
-            pageNum--;
-            renderPage(pageNum);
+            if (pageNum > 1) {
+                pageNum--;
+                renderPage(pageNum);
+            }
         });
 
         document.getElementById("next").addEventListener("click", function() {
-            if (pageNum >= pdfDoc.numPages) return;
-            pageNum++;
-            renderPage(pageNum);
+            if (pdfDoc && pageNum < pdfDoc.numPages) {
+                pageNum++;
+                renderPage(pageNum);
+            }
         });
 
         document.addEventListener("keydown", function(event) {
@@ -143,7 +146,7 @@
                     pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
                         pdfDoc = pdf;
                         pageNum = 1;
-                        document.getElementById("page-info").textContent = `Seite ${pageNum} von ${pdf.numPages}`;
+                        updatePageInfo();
                         renderPage(pageNum);
                     });
                 };
