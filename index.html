@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Buchanzeige</title>
+    <title>PDF Buchanzeige mit Sidebar</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <style>
         * {
@@ -13,26 +13,81 @@
         }
         body {
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
             height: 100vh;
             background-color: #222;
             color: white;
             font-family: Arial, sans-serif;
+            overflow: hidden;
         }
-        #pdf-container {
+        /* Sidebar */
+        .sidebar {
+            width: 30%;
+            background: #333;
+            padding: 20px;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+        }
+        .sidebar h2 {
+            margin-bottom: 10px;
+        }
+        .dropdown {
+            background: #444;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .dropdown-content {
+            display: none;
+            background: #555;
+            margin-top: 5px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .dropdown-content div {
+            padding: 5px;
+            cursor: pointer;
+        }
+        .dropdown-content div:hover {
+            background: #666;
+        }
+        .file-list {
+            margin-top: 15px;
+            max-height: 50vh;
+            overflow-y: auto;
+            background: #444;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .file-item {
+            padding: 5px;
+            background: #555;
+            margin-top: 5px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .file-item:hover {
+            background: #666;
+        }
+        .upload-btn {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        /* PDF Viewer */
+        .viewer {
+            width: 70%;
+            display: flex;
+            flex-direction: column;
             align-items: center;
-            width: 100vw;
-            height: 80vh;
+            justify-content: center;
             background: black;
         }
         canvas {
             max-width: 100%;
             max-height: 100%;
-            display: block;
         }
         .controls {
             display: flex;
@@ -43,40 +98,37 @@
         button {
             background: rgba(255, 255, 255, 0.2);
             border: none;
-            padding: 15px;
+            padding: 10px;
             font-size: 18px;
             color: white;
             cursor: pointer;
             border-radius: 5px;
-            margin: 10px;
-            transition: 0.3s;
-        }
-        button:hover {
-            background: rgba(255, 255, 255, 0.4);
-        }
-        #page-info {
-            font-size: 18px;
-            margin: 0 15px;
-        }
-        #file-input {
-            margin-top: 10px;
-            color: white;
-            background: none;
-            border: none;
+            margin: 5px;
         }
     </style>
 </head>
 <body>
-    <div id="pdf-container">
+    <div class="sidebar">
+        <h2>Dokumente für angeleitete Stunden</h2>
+        <div class="dropdown" onclick="toggleDropdown()">Schwerpunkt</div>
+        <div class="dropdown-content" id="dropdown-menu">
+            <div onclick="loadCategory('Medienpädagogik')">Medienpädagogik</div>
+            <div onclick="loadCategory('Angeleitete Spiele')">Angeleitete Spiele</div>
+            <div onclick="loadCategory('Aggressionsbewältigung')">Aggressionsbewältigung</div>
+            <div onclick="loadCategory('Sportstunde')">Sportstunde</div>
+            <div onclick="loadCategory('Mobbing')">Mobbing</div>
+        </div>
+        <div class="upload-btn" onclick="uploadFile()">Dokument einfügen</div>
+        <div class="file-list" id="file-list">Keine Dateien</div>
+    </div>
+    <div class="viewer">
         <canvas id="pdf-canvas"></canvas>
+        <div class="controls">
+            <button id="prev">&#9664;</button>
+            <span id="page-info">Seite 0 von 0</span>
+            <button id="next">&#9654;</button>
+        </div>
     </div>
-    <div class="controls">
-        <button id="prev">&#9664;</button>
-        <span id="page-info">Seite 0 von 0</span>
-        <button id="next">&#9654;</button>
-    </div>
-    <input type="file" id="file-input" accept="application/pdf">
-
     <script>
         let pdfDoc = null;
         let pageNum = 1;
@@ -87,76 +139,36 @@
             pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
                 pdfDoc = pdf;
                 pageNum = 1;
-                updatePageInfo();
                 renderPage(pageNum);
-            }).catch(function(error) {
-                console.error("Fehler beim Laden des PDFs:", error);
-                alert("Das PDF konnte nicht geladen werden. Bitte überprüfe den Dateipfad.");
             });
         }
-
         function renderPage(num) {
-            if (!pdfDoc) return;
             pdfDoc.getPage(num).then(function(page) {
-                let viewport = page.getViewport({ scale: window.innerWidth / page.getViewport({ scale: 1 }).width * 0.9 });
+                let viewport = page.getViewport({ scale: 1.5 });
                 canvas.width = viewport.width;
                 canvas.height = viewport.height;
-                let renderContext = {
-                    canvasContext: ctx,
-                    viewport: viewport
-                };
-                page.render(renderContext).promise.then(updatePageInfo);
+                let renderContext = { canvasContext: ctx, viewport: viewport };
+                page.render(renderContext);
+                document.getElementById("page-info").textContent = `Seite ${num} von ${pdfDoc.numPages}`;
             });
         }
-
-        function updatePageInfo() {
-            if (pdfDoc) {
-                document.getElementById("page-info").textContent = `Seite ${pageNum} von ${pdfDoc.numPages}`;
-            }
-        }
-
         document.getElementById("prev").addEventListener("click", function() {
-            if (pageNum > 1) {
-                pageNum--;
-                renderPage(pageNum);
-            }
+            if (pageNum > 1) renderPage(--pageNum);
         });
-
         document.getElementById("next").addEventListener("click", function() {
-            if (pdfDoc && pageNum < pdfDoc.numPages) {
-                pageNum++;
-                renderPage(pageNum);
-            }
+            if (pageNum < pdfDoc.numPages) renderPage(++pageNum);
         });
-
-        document.addEventListener("keydown", function(event) {
-            if (event.key === "ArrowLeft") {
-                document.getElementById("prev").click();
-            } else if (event.key === "ArrowRight") {
-                document.getElementById("next").click();
-            }
-        });
-
-        document.getElementById("file-input").addEventListener("change", function(event) {
-            let file = event.target.files[0];
-            if (file) {
-                let fileReader = new FileReader();
-                fileReader.onload = function() {
-                    let typedarray = new Uint8Array(this.result);
-                    pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
-                        pdfDoc = pdf;
-                        pageNum = 1;
-                        updatePageInfo();
-                        renderPage(pageNum);
-                    });
-                };
-                fileReader.readAsArrayBuffer(file);
-            }
-        });
-
-        window.onload = function() {
-            loadPDF("mein-buch.pdf");
-        };
+        function toggleDropdown() {
+            let menu = document.getElementById("dropdown-menu");
+            menu.style.display = menu.style.display === "block" ? "none" : "block";
+        }
+        function loadCategory(category) {
+            document.getElementById("file-list").innerHTML = `<div class='file-item'>${category} Dokument 1.pdf</div>`;
+        }
+        function uploadFile() {
+            alert("Upload-Funktion wird später implementiert.");
+        }
+        loadPDF("mein-buch.pdf");
     </script>
 </body>
 </html>
