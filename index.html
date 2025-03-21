@@ -50,36 +50,26 @@
         <button id="next">&#9654;</button>
     </div>
     <input type="file" id="file-input" accept="application/pdf">
+
     <script>
         let pdfDoc = null;
         let pageNum = 1;
         let pageRendering = false;
         let canvas = document.getElementById("pdf-canvas");
         let ctx = canvas.getContext("2d");
-        window.onload = function() {
-    let pdfUrl = "mein-buch.pdf"; // Hier den PDF-Dateinamen eintragen
-    pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
-        pdfDoc = pdf;
-        pageNum = 1;
-        document.getElementById("page-info").textContent = `Seite ${pageNum} von ${pdf.numPages}`;
-        renderPage(pageNum);
-    });
-};
-            let file = event.target.files[0];
-            if (file) {
-                let fileReader = new FileReader();
-                fileReader.onload = function() {
-                    let typedarray = new Uint8Array(this.result);
-                    pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
-                        pdfDoc = pdf;
-                        pageNum = 1;
-                        document.getElementById("page-info").textContent = `Seite ${pageNum} von ${pdf.numPages}`;
-                        renderPage(pageNum);
-                    });
-                };
-                fileReader.readAsArrayBuffer(file);
-            }
-        });
+
+        function loadPDF(pdfUrl) {
+            pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
+                pdfDoc = pdf;
+                pageNum = 1;
+                document.getElementById("page-info").textContent = `Seite ${pageNum} von ${pdf.numPages}`;
+                renderPage(pageNum);
+            }).catch(function(error) {
+                console.error("Fehler beim Laden des PDFs:", error);
+                alert("Das PDF konnte nicht geladen werden. Bitte überprüfe den Dateipfad.");
+            });
+        }
+
         function renderPage(num) {
             pageRendering = true;
             pdfDoc.getPage(num).then(function(page) {
@@ -96,16 +86,19 @@
                 });
             });
         }
+
         document.getElementById("prev").addEventListener("click", function() {
             if (pageNum <= 1) return;
             pageNum--;
             renderPage(pageNum);
         });
+
         document.getElementById("next").addEventListener("click", function() {
             if (pageNum >= pdfDoc.numPages) return;
             pageNum++;
             renderPage(pageNum);
         });
+
         document.addEventListener("keydown", function(event) {
             if (event.key === "ArrowLeft") {
                 document.getElementById("prev").click();
@@ -113,6 +106,28 @@
                 document.getElementById("next").click();
             }
         });
+
+        document.getElementById("file-input").addEventListener("change", function(event) {
+            let file = event.target.files[0];
+            if (file) {
+                let fileReader = new FileReader();
+                fileReader.onload = function() {
+                    let typedarray = new Uint8Array(this.result);
+                    pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
+                        pdfDoc = pdf;
+                        pageNum = 1;
+                        document.getElementById("page-info").textContent = `Seite ${pageNum} von ${pdf.numPages}`;
+                        renderPage(pageNum);
+                    });
+                };
+                fileReader.readAsArrayBuffer(file);
+            }
+        });
+
+        // Lade das Standard-PDF beim Start (falls vorhanden)
+        window.onload = function() {
+            loadPDF("mein-buch.pdf");
+        };
     </script>
 </body>
 </html>
