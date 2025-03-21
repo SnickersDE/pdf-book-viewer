@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Buchanzeige</title>
+    <script src="https://mozilla.github.io/pdf.js/build/pdf.js"></script>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+        }
+        #pdf-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid #ccc;
+            background: white;
+            padding: 10px;
+        }
+        canvas {
+            display: block;
+        }
+        .controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 10px;
+        }
+        button {
+            margin: 0 10px;
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="pdf-container">
+        <canvas id="pdf-canvas"></canvas>
+    </div>
+    <div class="controls">
+        <button id="prev">&#9664;</button>
+        <span id="page-info"></span>
+        <button id="next">&#9654;</button>
+    </div>
+    <input type="file" id="file-input" accept="application/pdf">
+    <script>
+        let pdfDoc = null;
+        let pageNum = 1;
+        let pageRendering = false;
+        let canvas = document.getElementById("pdf-canvas");
+        let ctx = canvas.getContext("2d");
+        document.getElementById("file-input").addEventListener("change", function(event) {
+            let file = event.target.files[0];
+            if (file) {
+                let fileReader = new FileReader();
+                fileReader.onload = function() {
+                    let typedarray = new Uint8Array(this.result);
+                    pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
+                        pdfDoc = pdf;
+                        pageNum = 1;
+                        document.getElementById("page-info").textContent = `Seite ${pageNum} von ${pdf.numPages}`;
+                        renderPage(pageNum);
+                    });
+                };
+                fileReader.readAsArrayBuffer(file);
+            }
+        });
+        function renderPage(num) {
+            pageRendering = true;
+            pdfDoc.getPage(num).then(function(page) {
+                let viewport = page.getViewport({ scale: 1.5 });
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                let renderContext = {
+                    canvasContext: ctx,
+                    viewport: viewport
+                };
+                page.render(renderContext).promise.then(function() {
+                    pageRendering = false;
+                    document.getElementById("page-info").textContent = `Seite ${num} von ${pdfDoc.numPages}`;
+                });
+            });
+        }
+        document.getElementById("prev").addEventListener("click", function() {
+            if (pageNum <= 1) return;
+            pageNum--;
+            renderPage(pageNum);
+        });
+        document.getElementById("next").addEventListener("click", function() {
+            if (pageNum >= pdfDoc.numPages) return;
+            pageNum++;
+            renderPage(pageNum);
+        });
+        document.addEventListener("keydown", function(event) {
+            if (event.key === "ArrowLeft") {
+                document.getElementById("prev").click();
+            } else if (event.key === "ArrowRight") {
+                document.getElementById("next").click();
+            }
+        });
+    </script>
+</body>
+</html>
