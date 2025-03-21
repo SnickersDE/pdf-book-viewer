@@ -56,7 +56,15 @@
         let pageRendering = false;
         let canvas = document.getElementById("pdf-canvas");
         let ctx = canvas.getContext("2d");
-        document.getElementById("file-input").addEventListener("change", function(event) {
+        window.onload = function() {
+    let pdfUrl = "mein-buch.pdf"; // Hier den PDF-Dateinamen eintragen
+    pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
+        pdfDoc = pdf;
+        pageNum = 1;
+        document.getElementById("page-info").textContent = `Seite ${pageNum} von ${pdf.numPages}`;
+        renderPage(pageNum);
+    });
+};
             let file = event.target.files[0];
             if (file) {
                 let fileReader = new FileReader();
